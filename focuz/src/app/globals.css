@@ -1,21 +1,9 @@
+/*shared across all pages! only imports tailwind and sets font*/
+
 @import 'tailwindcss/base';
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
-:root {
-  --background: #ffffff;
-  --foreground: #ED6A40;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #ED6A40;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  color: var(--foreground);
-  background: var(--background);
   font-family: 'Bebas Neue', sans-serif;
 }
