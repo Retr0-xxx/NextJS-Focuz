@@ -2,10 +2,21 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mysql from "mysql2/promise";
 import { redirect } from "next/navigation";
+import { url } from "inspector";
 
-let isTmerRunning = false;
-let shouldRedirect = false;
-const timers = new Map();
+//player state means timers
+//post request starts or stops time based on if timer is running or not
+//get request reads timers, returns if the page should redirect or not
+//also handles saving timer info to db, and adding coins to user
+
+type timerEntry = {
+    startTime: number;
+    isTimerRunning: boolean;
+    shouldRedirect: boolean;
+};
+
+const timers = new Map<any, timerEntry>();
+
 
 //post request to player state start or stop timer
 export async function POST(req: Request, res: Response) {
@@ -13,9 +24,9 @@ export async function POST(req: Request, res: Response) {
     const isPlayerInGame = body.isPlayerInGame;
     const session = await getServerSession({ req });
     if (session && session.user) {
-        if (isPlayerInGame && !isTmerRunning) {
+        if (isPlayerInGame && !timers.get(session.user.email)?.isTimerRunning) {
             startTimer(session.user.email);
-        } else if (!isPlayerInGame && isTmerRunning) {
+        } else if (!isPlayerInGame && timers.get(session.user.email)?.isTimerRunning) {
             stopTimer(session.user.email);
         }
     } else {
@@ -29,8 +40,8 @@ export async function GET(req: Request, res: Response) {
     const session = await getServerSession({ req });
     if (session && session.user) {
         const elapsedTime = readTimer(session.user.email);
-        if (shouldRedirect) {
-            shouldRedirect = false;
+        if (timers.get(session.user.email)?.shouldRedirect) {
+            timers.get(session.user.email)!.shouldRedirect = false;
             return NextResponse.json({ elapsedTime, shouldRedirect : true });
         }
         else{
@@ -42,38 +53,39 @@ export async function GET(req: Request, res: Response) {
 }
 
 function startTimer(clientId:any) {
-    isTmerRunning = true;
-    const startTime = Date.now();
-    timers.set(clientId, { startTime });
+    timers.set(clientId, { startTime: Date.now(), isTimerRunning: true, shouldRedirect: false });
     console.log(`Timer started for client ${clientId}`);
 }
 
-function readTimer(clientId:any) {
-    if (!timers.has(clientId)) return null;
-    const { startTime } = timers.get(clientId);
+function readTimer(clientId: any) {
+    if (!timers.has(clientId)) return 0;
+    const startTime = timers.get(clientId)?.startTime ?? 0;
     checkTimerAsync(clientId);
     return Date.now() - startTime;
 }
 
 async function checkTimerAsync(clientId:any) {
-    if (!timers.has(clientId)) return null;
-    const response = await fetch("http://localhost:3000/api/timerSetting");
+    const baseUrl = process.env.BASE_URL;   
+    const response = await fetch(`${baseUrl}/api/timerSetting`);
     const { timerSetting } = await response.json();
-    const { startTime } = timers.get(clientId);
+    const timer = timers.get(clientId);
+    if (!timer || !timer.isTimerRunning) return 0;
+    const startTime = timers.get(clientId)?.startTime ?? 0;
     if (Date.now() - startTime > timerSetting) {
         stopTimer(clientId);
-        shouldRedirect = true;
+        timers.get(clientId)!.shouldRedirect = true;
+        addCoin(clientId, 1);
     } 
 }
 
 
 async function stopTimer(clientId:any) {
-    isTmerRunning = false;
-    if (!timers.has(clientId)) return null;
+    const timer = timers.get(clientId);
+    if (!timer || !timer.isTimerRunning) return null; // Prevent multiple calls
 
-    const { startTime } = timers.get(clientId);
+    const startTime = timers.get(clientId)?.startTime ?? 0;
     const elapsedTime = Date.now() - startTime;
-    timers.delete(clientId);
+    timers.set(clientId, { startTime: 0, isTimerRunning: false, shouldRedirect: false });
 
     try {
         // Create a database connection
@@ -94,7 +106,6 @@ async function stopTimer(clientId:any) {
         );
 
         console.log(`Timer stopped for client ${clientId}. Elapsed time: ${elapsedTime} ms`);
-        console.log(`${rows.affectedRows} row(s) updated.`);
 
         // Close the database connection
         await db.end();
@@ -103,4 +114,59 @@ async function stopTimer(clientId:any) {
     }
 
     return elapsedTime;
+}
+
+// async function addCoin(clientId: any, amount: number) {
+//     try {
+//         const baseUrl = process.env.BASE_URL; // Ensure this is set in your environment
+//         const response = await fetch(`${baseUrl}/api/playerCoin`, {
+//             method: "POST",
+//             headers: {
+//                 "Content-Type": "application/json",
+//             },
+//             body: JSON.stringify({
+//                 coinChange: amount,
+//             }),
+//         });
+
+//         if (!response.ok) {
+//             throw new Error(`Failed to update coins. Status: ${response.status}`);
+//         }
+
+//         console.log(`API1 Coins added for client ${clientId}. Amount: ${amount}`);
+//     } catch (error) {
+//         console.error("Error sending coin update request:", error);
+//     }
+// }
+
+async function addCoin(clientId:any, amount:number){
+    try{
+        const db = await mysql.createConnection({
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: process.env.DB_NAME,
+        });
+
+        if (amount > 0) {
+            const [rows] = await db.query(
+                `UPDATE users
+                SET coin = coin + ?
+                WHERE email = ?`,
+                [amount, clientId]
+            );
+        }
+        else{
+            const [rows] = await db.query(
+                `UPDATE users
+                SET coin = coin - ?
+                WHERE email = ?`,
+                [-amount, clientId]
+            );
+        }
+        await db.end();
+    }
+    catch(error){
+        console.error("Error updating the database:", error);
+    }
 }

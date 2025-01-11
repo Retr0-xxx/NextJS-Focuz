@@ -8,6 +8,8 @@ export async function GET(req: Request, res: Response) {
 
 export async function POST(req: Request, res: Response) {
     const body = await req.json();
-    timerSetting = body.timerSetting;
+    if (body.timerSetting){
+        timerSetting = body.timerSetting;
+    }
     return NextResponse.json({ success: true });
 }
