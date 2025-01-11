@@ -8,7 +8,6 @@ function Fullscreen() {
     const [isPlayerInGame, setPlayerInGame] = useState(false);
 
     const { data: session } = useSession();
-    console.log("session is: ", session);
 
 
     function postIsPlayerInGame() {

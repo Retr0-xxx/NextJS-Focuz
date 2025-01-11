@@ -17,7 +17,6 @@ type timerEntry = {
 
 const timers = new Map<any, timerEntry>();
 
-
 //post request to player state start or stop timer
 export async function POST(req: Request, res: Response) {
     const body = await req.json();
@@ -38,8 +37,9 @@ export async function POST(req: Request, res: Response) {
 //get request to player state reads timer
 export async function GET(req: Request, res: Response) {
     const session = await getServerSession({ req });
+    const cookie : string = req.headers.get("cookie")!;
     if (session && session.user) {
-        const elapsedTime = readTimer(session.user.email);
+        const elapsedTime = readTimer(session.user.email, cookie);
         if (timers.get(session.user.email)?.shouldRedirect) {
             timers.get(session.user.email)!.shouldRedirect = false;
             return NextResponse.json({ elapsedTime, shouldRedirect : true });
@@ -57,16 +57,24 @@ function startTimer(clientId:any) {
     console.log(`Timer started for client ${clientId}`);
 }
 
-function readTimer(clientId: any) {
+function readTimer(clientId: any, cookie: string) {
     if (!timers.has(clientId)) return 0;
     const startTime = timers.get(clientId)?.startTime ?? 0;
-    checkTimerAsync(clientId);
+    checkTimerAsync(clientId, cookie);
     return Date.now() - startTime;
 }
 
-async function checkTimerAsync(clientId:any) {
-    const baseUrl = process.env.BASE_URL;   
-    const response = await fetch(`${baseUrl}/api/timerSetting`);
+async function checkTimerAsync(clientId:any, cookie: string) {
+    const baseUrl = process.env.BASE_URL;  
+    //forward the cookie, imortant for getServersession()
+    const response = await fetch(`${baseUrl}/api/timerSetting`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+            "Cookie": cookie,
+        },
+    }
+    );
     const { timerSetting } = await response.json();
     const timer = timers.get(clientId);
     if (!timer || !timer.isTimerRunning) return 0;
@@ -116,28 +124,6 @@ async function stopTimer(clientId:any) {
     return elapsedTime;
 }
 
-// async function addCoin(clientId: any, amount: number) {
-//     try {
-//         const baseUrl = process.env.BASE_URL; // Ensure this is set in your environment
-//         const response = await fetch(`${baseUrl}/api/playerCoin`, {
-//             method: "POST",
-//             headers: {
-//                 "Content-Type": "application/json",
-//             },
-//             body: JSON.stringify({
-//                 coinChange: amount,
-//             }),
-//         });
-
-//         if (!response.ok) {
-//             throw new Error(`Failed to update coins. Status: ${response.status}`);
-//         }
-
-//         console.log(`API1 Coins added for client ${clientId}. Amount: ${amount}`);
-//     } catch (error) {
-//         console.error("Error sending coin update request:", error);
-//     }
-// }
 
 async function addCoin(clientId:any, amount:number){
     try{

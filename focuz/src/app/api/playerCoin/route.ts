@@ -9,7 +9,6 @@ import exp from "node:constants";
 
 export async function POST(req: Request, res: Response) {
     const session = await getServerSession({ req });
-    console.log("session is at POST", session);
     if (session && session.user) {
         if (session.user.email) {
             const body = await req.json();
@@ -28,7 +27,6 @@ export async function POST(req: Request, res: Response) {
 export async function GET(req: Request, res: Response) {
     let coin = 0;
     const session = await getServerSession({ req });
-    console.log("session is at GET", session);
     if (session && session.user) {
         if (session.user.email) {
             coin = await readCoin(session.user.email);
