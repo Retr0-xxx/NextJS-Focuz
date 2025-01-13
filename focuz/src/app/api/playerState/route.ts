@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mysql from "mysql2/promise";
-import { redirect } from "next/navigation";
-import { url } from "inspector";
+import { globalContext } from "@/utils/context";
 
 //player state means timers
 //post request starts or stops time based on if timer is running or not
@@ -64,6 +63,7 @@ function readTimer(clientId: any, cookie: string) {
     return Date.now() - startTime;
 }
 
+//check timer and stop if time is up
 async function checkTimerAsync(clientId:any, cookie: string) {
     const baseUrl = process.env.BASE_URL;  
     //forward the cookie, imortant for getServersession()
@@ -82,7 +82,9 @@ async function checkTimerAsync(clientId:any, cookie: string) {
     if (Date.now() - startTime > timerSetting) {
         stopTimer(clientId);
         timers.get(clientId)!.shouldRedirect = true;
-        addCoin(clientId, 1);
+        const reward = globalContext.timerReward.get(clientId)!;
+        console.log(`coin reward is: ${reward}`);
+        addCoin(clientId, reward);
     } 
 }
 

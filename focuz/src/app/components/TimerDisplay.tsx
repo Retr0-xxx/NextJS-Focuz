@@ -5,10 +5,12 @@ function TimerDisplay() {
     const [elapsedTime, setElapsedTime] = useState(0);
     const [loading, setLoading] = useState(true);
     const [timerSetting, setTimerSetting] = useState(1000); // Default timer setting
+    const [timerReward, setTimerReward] = useState(1); // Default timer reward
     const [isButtonVisible, setButtonVisible] = useState(true);
 
     // Array of timer values
     const timerValues = [1000, 2000, 3000, 4000, 5000,1000*60*5];
+    const timerRewardArr = [1, 2, 3, 4, 5, 10];
 
     // Function to fetch timer data
     async function fetchTimerData() {
@@ -35,7 +37,9 @@ function TimerDisplay() {
     async function updateTimerSetting() {
         const nextIndex = (timerValues.indexOf(timerSetting) + 1) % timerValues.length;
         const newSetting = timerValues[nextIndex];
+        const newReward = timerRewardArr[nextIndex];
         setTimerSetting(newSetting);
+        setTimerReward(newReward);
 
         try {
             const response = await fetch("/api/timerSetting", {
@@ -43,7 +47,7 @@ function TimerDisplay() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ timerSetting: newSetting }),
+                body: JSON.stringify({ timerSetting: newSetting, timerReward: newReward }),
             });
 
             if (!response.ok) {
@@ -63,7 +67,7 @@ function TimerDisplay() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ timerSetting: timerSetting }),
+                body: JSON.stringify({ timerSetting: timerSetting, timerReward: timerReward }),
             });
 
             if (!response.ok) {
