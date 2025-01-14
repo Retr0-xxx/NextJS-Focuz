@@ -40,17 +40,17 @@ export default function ScoreSummary() {
     }, []);
 
     return (
-        <div className="flex flex-col items-start justify-start pl-[7vw] pt-[3vh]">
+        <div className="flex flex-col items-start justify-start pl-[2vw] pt-[2vh]">
             <h1 className="text-[#FCB7AB] text-[7vh] leading-[7vh]">
                 You Have Focused For
             </h1>
-            <p className="text-[#FCB7AB] text-[35vh] leading-[35vh] font-bold">
+            <p className="text-[#FCB7AB] text-[20vh] leading-[25vh] font-bold">
                 {totalTime !== null ? formatTime(totalTime) : "Loading..."}
             </p>
             <h1 className="text-[#FCB7AB] text-[5vh] leading-[5vh]">
                 Last Focus
             </h1>
-            <p className="text-[#FCB7AB] text-[15vh] leading-[15vh] font-bold">
+            <p className="text-[#FCB7AB] text-[10vh] leading-[10vh] font-bold">
                 {lastTime !== null ? formatTime(lastTime) : "Loading..."}
             </p>
         </div>
